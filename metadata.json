@@ -1,0 +1,5 @@
+{
+  "name": "Scientific Manual Generator",
+  "description": "An application that leverages AI to perform deep searches of scientific literature and generates comprehensive manuals on medical topics, complete with citations.",
+  "requestFramePermissions": []
+}
