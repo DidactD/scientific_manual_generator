@@ -7,7 +7,7 @@ import Navbar from './components/Navbar';
 import SavedManualsPage from './pages/SavedManualsPage';
 import ModelsPage from './pages/ModelsPage';
 import ErrorMessage from './components/ErrorMessage';
-import { generateManual } from './services/geminiService';
+import { generateManual } from './services/generationService';
 import type { ManualData, SavedManual, DetailLevel, ApiKey } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import useDebounce from './hooks/useDebounce';
@@ -55,10 +55,10 @@ const App: React.FC = () => {
     }, [displayData, activeManual, savedManuals, topic]);
 
     const handleGenerate = useCallback(async (generationTopic: string, generationLanguage: string, generationDetailLevel: DetailLevel, idToUpdate?: string) => {
-        const activeGeminiKey = apiKeys.find(k => k.provider === 'Google Gemini' && k.isActive)?.key;
+        const activeApiKeys = apiKeys.filter(k => k.isActive);
 
-        if (!activeGeminiKey) {
-            setError("No active Google Gemini API key found. Please configure it in the Models settings (click the gear icon in the header).");
+        if (activeApiKeys.length === 0) {
+            setError("No active API key found. Please select one or more active keys in the Models settings (click the gear icon in the header).");
             return;
         }
 
@@ -76,7 +76,7 @@ const App: React.FC = () => {
         setActiveManual(null);
 
         try {
-            const data = await generateManual(generationTopic, generationLanguage, generationDetailLevel, activeGeminiKey);
+            const data = await generateManual(activeApiKeys, generationTopic, generationLanguage, generationDetailLevel);
             if(idToUpdate) {
                 const updatedManuals = savedManuals.map(m => m.id === idToUpdate ? {...m, ...data, topic: generationTopic, language: generationLanguage, detailLevel: generationDetailLevel, savedAt: new Date().toISOString() } : m);
                 setSavedManuals(updatedManuals);

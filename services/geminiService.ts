@@ -1,7 +1,7 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import type { GroundingChunk, ManualData, DetailLevel } from '../types';
 
-function getPrompt(topic: string, language: string, detailLevel: DetailLevel): string {
+function getPrompt(topic: string, language: string, detailLevel: DetailLevel, additionalContext?: string): string {
     let detailInstruction = '';
     switch (detailLevel) {
         case 'Concise':
@@ -16,24 +16,7 @@ function getPrompt(topic: string, language: string, detailLevel: DetailLevel): s
             break;
     }
 
-    return `
-Initialization: You are a virtual assistant with advanced expertise in medical and scientific research. You can perform web searches to find recently published guidelines and articles.
-
-Context: I am a medical professional and I need to prepare a didactic manual applicable to daily clinical practice on this topic: "${topic}".
-
-Objective: To produce an exhaustive text, based on the most up-to-date scientific evidence, usable in daily clinical practice.
-
-**Detail Level**: ${detailLevel}. ${detailInstruction}
-
-Output language: ${language}.
-
-Required sources:
-- Guidelines from national and international scientific societies
-- Systematic reviews / meta-analyses
-- Randomized controlled trials
-- Other authoritative recommendations
-The sources should preferably have been published in the last 5-10 years, unless they are fundamental studies or still universally accepted guidelines.
-
+    const mandatoryStructure = `
 Mandatory structure (typical of specialized texts):
 1.  **Title**: Clear, concise, and specific to the topic.
 2.  **Introduction**:
@@ -58,7 +41,9 @@ Mandatory structure (typical of specialized texts):
 9.  **Prognosis and Outcome**: Prediction of evolution.
 10. **Decision-making Algorithms**: Flowcharts for clinical decisions.
 11. **Future Developments**: Overview of new research and technologies.
+`;
 
+    const additionalInstructions = `
 Additional instruction: The format must be a cascading outline, using markdown for formatting (## for main headings, ### for subheadings, * for bullet points, **text** for bold).
 
 Tone / Style: Formal and didactic; concise sentences.
@@ -73,10 +58,61 @@ Operational flow:
 
 The "Bibliography" section must be unique and at the end of the document.
 `;
+    
+    if (additionalContext) {
+        return `
+Initialization: You are an expert medical editor and researcher. You synthesize information from multiple sources to create the most accurate and comprehensive documents.
+
+Context: I am a medical professional. I have asked multiple AI assistants to draft a manual on "${topic}". I need you to act as the final editor, taking their drafts, verifying the information with your own web search, and producing a single, superior manual.
+
+Provided Drafts from other models:
+${additionalContext}
+---
+
+Objective: Review the provided drafts, perform your own up-to-date web searches, and then write the definitive manual on the topic. The final output must follow the mandatory structure below and be a coherent, single document, not a critique of the drafts. Integrate the best information from the drafts and your own research.
+
+**Detail Level**: ${detailLevel}. ${detailInstruction}
+
+Output language: ${language}.
+
+Required sources:
+- Guidelines from national and international scientific societies
+- Systematic reviews / meta-analyses
+- Randomized controlled trials
+- Other authoritative recommendations
+The sources should preferably have been published in the last 5-10 years, unless they are fundamental studies or still universally accepted guidelines.
+
+${mandatoryStructure}
+${additionalInstructions}
+`;
+    }
+
+
+    return `
+Initialization: You are a virtual assistant with advanced expertise in medical and scientific research. You can perform web searches to find recently published guidelines and articles.
+
+Context: I am a medical professional and I need to prepare a didactic manual applicable to daily clinical practice on this topic: "${topic}".
+
+Objective: To produce an exhaustive text, based on the most up-to-date scientific evidence, usable in daily clinical practice.
+
+**Detail Level**: ${detailLevel}. ${detailInstruction}
+
+Output language: ${language}.
+
+Required sources:
+- Guidelines from national and international scientific societies
+- Systematic reviews / meta-analyses
+- Randomized controlled trials
+- Other authoritative recommendations
+The sources should preferably have been published in the last 5-10 years, unless they are fundamental studies or still universally accepted guidelines.
+
+${mandatoryStructure}
+${additionalInstructions}
+`;
 }
 
 
-export async function generateManual(topic: string, language: string, detailLevel: DetailLevel, apiKey: string): Promise<ManualData> {
+export async function generateManual(topic: string, language: string, detailLevel: DetailLevel, apiKey: string, additionalContext?: string): Promise<ManualData> {
   if (!topic || topic.trim() === '') {
     throw new Error("Topic cannot be empty.");
   }
@@ -90,7 +126,7 @@ export async function generateManual(topic: string, language: string, detailLeve
   const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const prompt = getPrompt(topic, language, detailLevel);
+    const prompt = getPrompt(topic, language, detailLevel, additionalContext);
 
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",

@@ -70,7 +70,7 @@ const ModelsPage: React.FC<ModelsPageProps> = ({ apiKeys, setApiKeys, onClose })
     const handleToggleActive = (id: string) => {
         setApiKeys(prev =>
             prev.map(key =>
-                key.id === id ? { ...key, isActive: true } : { ...key, isActive: false }
+                key.id === id ? { ...key, isActive: !key.isActive } : key
             )
         );
     };
@@ -163,7 +163,7 @@ const ModelsPage: React.FC<ModelsPageProps> = ({ apiKeys, setApiKeys, onClose })
                             )}
                         </div>
                         <div className="mt-6 p-4 bg-slate-50 border-l-4 border-slate-300 text-slate-600 rounded-r-lg text-sm">
-                            <p><strong className="font-semibold">Note:</strong> Only one API key can be active at a time. Currently, only the active 'Google Gemini' key is used for generating manuals. Support for other models is coming soon.</p>
+                            <p><strong className="font-semibold">Note:</strong> You can activate multiple models simultaneously. The generator will use all active models to synthesize a more comprehensive report. For best results, include Google Gemini for its web search and synthesis capabilities.</p>
                         </div>
                     </div>
                 </div>
