@@ -1,15 +1,29 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import type { GroundingChunk, ManualData } from '../types';
+import type { GroundingChunk, ManualData, DetailLevel } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+function getPrompt(topic: string, language: string, detailLevel: DetailLevel): string {
+    let detailInstruction = '';
+    switch (detailLevel) {
+        case 'Concise':
+            detailInstruction = 'The output should be a concise summary, focusing only on the most critical points for each section. Keep it brief and to the point.';
+            break;
+        case 'Detailed':
+            detailInstruction = 'The output must be extremely detailed and exhaustive. For each section, provide in-depth explanations, cite specific evidence, discuss nuances, and explore related concepts. The manual should be comprehensive enough for a specialist.';
+            break;
+        case 'Standard':
+        default:
+            detailInstruction = 'The output should be a well-balanced and comprehensive manual, suitable for daily clinical practice.';
+            break;
+    }
 
-function getPrompt(topic: string, language: string): string {
     return `
 Initialization: You are a virtual assistant with advanced expertise in medical and scientific research. You can perform web searches to find recently published guidelines and articles.
 
 Context: I am a medical professional and I need to prepare a didactic manual applicable to daily clinical practice on this topic: "${topic}".
 
 Objective: To produce an exhaustive text, based on the most up-to-date scientific evidence, usable in daily clinical practice.
+
+**Detail Level**: ${detailLevel}. ${detailInstruction}
 
 Output language: ${language}.
 
@@ -62,16 +76,21 @@ The "Bibliography" section must be unique and at the end of the document.
 }
 
 
-export async function generateManual(topic: string, language: string): Promise<ManualData> {
+export async function generateManual(topic: string, language: string, detailLevel: DetailLevel, apiKey: string): Promise<ManualData> {
   if (!topic || topic.trim() === '') {
     throw new Error("Topic cannot be empty.");
   }
   if (!language || language.trim() === '') {
     throw new Error("Language cannot be empty.");
   }
+  if (!apiKey) {
+    throw new Error("Google Gemini API key is not configured. Please add it on the Models page.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const prompt = getPrompt(topic, language);
+    const prompt = getPrompt(topic, language, detailLevel);
 
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -83,7 +102,6 @@ export async function generateManual(topic: string, language: string): Promise<M
 
     const content = response.text;
     const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
-    // FIX: The GroundingChunk type from @google/genai has optional `uri` and `title` properties on its `web` object, which is incompatible with our local `GroundingChunk` type that requires them. This filters for valid chunks and maps them to our local type.
     const sources: GroundingChunk[] =
       groundingMetadata?.groundingChunks
         ?.filter(
@@ -104,6 +122,10 @@ export async function generateManual(topic: string, language: string): Promise<M
   } catch (error) {
     console.error("Error generating manual:", error);
     if (error instanceof Error) {
+        // More specific error for API key issues
+        if (error.message.includes('API key not valid')) {
+            throw new Error('The provided Google Gemini API key is invalid. Please check it in the Models settings.');
+        }
         throw new Error(`An error occurred while communicating with the API: ${error.message}`);
     }
     throw new Error("An unknown error occurred while generating the manual.");
