@@ -32,7 +32,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ setView, theme, setTheme, user, onLogout }) => {
     return (
-        <header className="text-center py-4 border-bottom bg-body-tertiary position-relative">
+        <header className="text-center py-4 border-bottom bg-body-tertiary position-relative" style={{ zIndex: 1030 }}>
             <div className="d-flex align-items-center justify-content-center gap-3">
                 <BookIcon />
                 <h1 className="h2 fw-bold text-body-emphasis mb-0">
