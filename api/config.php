@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 // Impostazioni del Database
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root'); // Sostituisci con il tuo utente del database
-define('DB_PASS', ''); // Sostituisci con la tua password
+define('DB_PASS', 'Locilocorum1996'); // Sostituisci con la tua password
 define('DB_NAME', 'manual_generator_db');
 
 // Chiave segreta per il JWT (JSON Web Token)
