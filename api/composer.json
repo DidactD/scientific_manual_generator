@@ -1,6 +1,16 @@
 {
     "require": {
         "firebase/php-jwt": "^6.11",
-        "google/generative-ai": "^0.7.0"
+        "google-gemini-php/client": "^2.6",
+        "symfony/http-client": "^7.3",
+        "nyholm/psr7": "^1.8",
+        "psr/http-client": "^1.0",
+        "openai-php/client": "^0.16.1",
+        "mozex/anthropic-php": "^1.1.0"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
     }
 }
