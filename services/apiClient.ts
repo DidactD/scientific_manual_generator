@@ -1,8 +1,9 @@
 import axios from 'axios';
 
 const apiClient = axios.create({
-  // The backend is assumed to be served from the same origin.
-  // We will use relative paths for API calls.
+  // Il backend è assunto essere servito dalla stessa origine.
+  // CAMBIA QUESTO: Usa l'URL completo del tuo Virtual Host.
+  baseURL: 'http://api.scientific-manual-generator.com', 
   headers: {
     'Content-Type': 'application/json',
   },
