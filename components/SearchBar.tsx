@@ -48,7 +48,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ topic, setTopic, language, setLan
     const handleLanguageSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const selectedValue = e.target.value;
         if (selectedValue === 'other') {
-            setLanguage(''); // Clear language to prompt for custom input
+            setLanguage('');
         } else {
             setLanguage(selectedValue);
         }
@@ -59,6 +59,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ topic, setTopic, language, setLan
             <div className="card-body p-4">
                 <form onSubmit={handleSubmit} className="w-100">
                     <div className="row g-3 mb-3">
+                        {/* ... (input per topic e lingua - invariati) ... */}
                         <div className="col-md-8">
                             <label htmlFor="topic-input" className="form-label">Medical Topic</label>
                             <div className="dropdown">

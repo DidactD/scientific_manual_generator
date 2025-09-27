@@ -1,3 +1,5 @@
+// in services/generationService.ts
+
 import type { ManualData, DetailLevel, ApiKey } from '../types';
 import apiClient from './apiClient';
 import axios from 'axios';
@@ -6,7 +8,8 @@ export async function generateManual(
     activeKeys: ApiKey[],
     topic: string,
     language: string,
-    detailLevel: DetailLevel
+    detailLevel: DetailLevel,
+    isDeepSearch: boolean // Aggiunto il nuovo parametro
 ): Promise<ManualData> {
     if (activeKeys.length === 0) {
         throw new Error("No active API keys found. Please select one or more active keys in the Models settings.");
@@ -24,6 +27,7 @@ export async function generateManual(
             language,
             detailLevel,
             activeKeys,
+            isDeepSearch, // Inviato al backend
         });
 
         if (!response.data || !response.data.content) {
@@ -35,15 +39,11 @@ export async function generateManual(
         console.error("Error generating manual via backend:", error);
         if (axios.isAxiosError(error)) {
             if (error.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
                 const errorMessage = error.response.data?.message || `The backend responded with status ${error.response.status}.`;
                 throw new Error(`Backend Error: ${errorMessage}`);
             } else if (error.request) {
-                // The request was made but no response was received
                 throw new Error('Could not connect to the backend service. Please check your network connection and if the server is running.');
             } else {
-                // Something happened in setting up the request that triggered an Error
                 throw new Error(`An error occurred while communicating with the backend: ${error.message}`);
             }
         }

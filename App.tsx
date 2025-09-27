@@ -124,7 +124,8 @@ const App: React.FC = () => {
         setActiveManual(null);
 
         try {
-            const data = await generateManual(activeApiKeys, topic, language, detailLevel);
+            // Passiamo isDeepSearch come true direttamente
+            const data = await generateManual(activeApiKeys, topic, language, detailLevel, true);
             setCurrentGeneratedData(data);
         } catch (err) {
             if (err instanceof Error) {
@@ -189,7 +190,8 @@ const App: React.FC = () => {
         setCurrentGeneratedData(null);
 
         try {
-            const newData = await generateManual(activeApiKeys, manualToUpdate.topic, manualToUpdate.language, manualToUpdate.detailLevel);
+            // Passiamo isDeepSearch come true direttamente
+            const newData = await generateManual(activeApiKeys, manualToUpdate.topic, manualToUpdate.language, manualToUpdate.detailLevel, true);
             const updatedManual: SavedManual = {
                 ...manualToUpdate,
                 ...newData,

@@ -27,6 +27,7 @@ export interface ApiKey {
     provider: ModelProvider;
     key: string;
     isActive: boolean;
+    model: string; // Aggiunto per specificare il modello (es. 'gpt-4o')
 }
 
 export interface User {

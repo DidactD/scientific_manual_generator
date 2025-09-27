@@ -4,12 +4,9 @@ ob_start();
 require_once 'vendor/autoload.php';
 require_once 'config.php';
 
-// Non usiamo le dichiarazioni 'use' per i client delle API per evitare conflitti,
-// ci affideremo all'autoloader di Composer.
 use \Firebase\JWT\JWT;
 use \Firebase\JWT\Key;
 
-// --- Gestione della Richiesta e Sicurezza (Invariata) ---
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
@@ -30,7 +27,7 @@ function getUserIdFromToken() {
         $decoded = JWT::decode($jwt, new Key(JWT_SECRET, 'HS256'));
         return $decoded->user->id;
     } catch (Exception $e) {
-        error_log("Errore Decodifica JWT in generate.php: " . $e->getMessage());
+        error_log("Errore Decodifica JWT: " . $e->getMessage());
         return null;
     }
 }
@@ -48,6 +45,7 @@ $topic = $requestData->topic ?? '';
 $language = $requestData->language ?? 'English';
 $detailLevel = $requestData->detailLevel ?? 'Standard';
 $activeKeys = $requestData->activeKeys ?? [];
+$isDeepSearch = true;
 
 if (empty($topic) || empty($activeKeys)) {
     http_response_code(400);
@@ -56,137 +54,87 @@ if (empty($topic) || empty($activeKeys)) {
     exit();
 }
 
-// --- Funzione Prompt per Gemini (Invariata) ---
-function getGeminiPrompt(string $topic, string $language, string $detailLevel, ?string $additionalContext = null): string {
+function getGeminiPrompt(string $topic, string $language, string $detailLevel, bool $isDeepSearch, ?string $additionalContext = null): string {
     $detailInstruction = 'The output should be a well-balanced and comprehensive manual, suitable for daily clinical practice.';
     if ($detailLevel === 'Concise') {
-        $detailInstruction = 'The output should be a concise summary, focusing only on the most critical points for each section. Keep it brief and to the point.';
+        $detailInstruction = 'The output should be a concise summary...';
     } elseif ($detailLevel === 'Detailed') {
-        $detailInstruction = 'The output must be extremely detailed and exhaustive. For each section, provide in-depth explanations, cite specific evidence, discuss nuances, and explore related concepts. The manual should be comprehensive enough for a specialist.';
+        $detailInstruction = 'The output must be extremely detailed and exhaustive...';
     }
-    $mandatoryStructure = "
-Mandatory structure (typical of specialized texts):
-1.  **Title**: Clear, concise, and specific to the topic.
-2.  **Introduction**: Definition, Epidemiology, Anatomy.
-3.  **Etiology and Pathogenesis**: Etiology, Pathogenesis.
-4.  **Clinical Picture**: Signs and Symptoms, Natural History, Classifications.
-5.  **Diagnosis**: Anamnesis, Physical Examination, Laboratory Tests, Imaging.
-6.  **Surgical Treatment**: Detailed description of procedures.
-7.  **Conservative Treatment**: Non-surgical therapies.
-8.  **Follow-up**: Post-treatment monitoring plan.
-9.  **Prognosis and Outcome**: Prediction of evolution.
-10. **Decision-making Algorithms**: Flowcharts for clinical decisions.
-11. **Future Developments**: Overview of new research and technologies.
-12. **Bibliography (Vancouver Style)**: A final section with numbered sources.
-";
-    $additionalInstructions = "
-Additional instruction: The format must be a cascading outline, using markdown for formatting (## for main headings, ### for subheadings, * for bullet points, **text** for bold).
-Tone / Style: Formal and didactic; concise sentences.
-Handling evidence gaps: If information is insufficient, state it explicitly.
-Citations: In-text citations must be numerical, in square brackets (e.g., [1], [2]). The 'Bibliography' section must list all sources numerically.
-";
+
+    $deepSearchInstruction = "";
+    if ($isDeepSearch) {
+        $deepSearchInstruction = "\nDEEP SEARCH MODE: You must perform a more rigorous, multi-step research process...";
+    }
+    
+    $mandatoryStructure = "\nMandatory structure (typical of specialized texts):...";
+    $additionalInstructions = "\nAdditional instruction: ...";
+
     if ($additionalContext) {
-        return "
-Initialization: You are an expert medical editor and researcher.
-Context: I have asked multiple AI assistants to draft a manual on \"{$topic}\". I need you to act as the final editor, taking their drafts, verifying the information with your own web search, and producing a single, superior manual.
-Provided Drafts from other models:
-{$additionalContext}
----
-Objective: Review the drafts, perform your own searches, and write the definitive manual. The final output must follow the mandatory structure below and be a coherent, single document.
-**Detail Level**: {$detailLevel}. {$detailInstruction}
-Output language: {$language}.
-Required sources: Guidelines, systematic reviews, randomized controlled trials (preferably last 5-10 years).
-{$mandatoryStructure}
-{$additionalInstructions}
-";
+        return "Initialization: You are an expert medical editor...\nProvided Drafts from other models:\n{$additionalContext}\n---\nObjective: Review the drafts...{$deepSearchInstruction}\n...{$mandatoryStructure}{$additionalInstructions}";
     }
-    return "
-Initialization: You are a virtual assistant with expertise in medical research.
-Context: I am a medical professional and I need a didactic manual on this topic: \"{$topic}\".
-Objective: To produce an exhaustive text based on up-to-date scientific evidence.
-**Detail Level**: {$detailLevel}. {$detailInstruction}
-Output language: {$language}.
-Required sources: Guidelines, systematic reviews, randomized controlled trials (preferably last 5-10 years).
-{$mandatoryStructure}
-{$additionalInstructions}
-";
+    return "Initialization: You are a virtual assistant...\nObjective: To produce an exhaustive text...{$deepSearchInstruction}\n...{$mandatoryStructure}{$additionalInstructions}";
 }
 
-
-// --- Funzioni di Chiamata alle API Reali (Corrette per PHP Standard) ---
-
-function callGemini(string $apiKey, string $topic, string $language, string $detailLevel, ?string $additionalContext = null): array {
+function callGemini(string $apiKey, string $model, string $topic, string $language, string $detailLevel, bool $isDeepSearch, ?string $additionalContext = null): array {
     try {
-        $prompt = getGeminiPrompt($topic, $language, $detailLevel, $additionalContext);
-        
-        // CORREZIONE: Usiamo il Fully Qualified Class Name
+        $prompt = getGeminiPrompt($topic, $language, $detailLevel, $isDeepSearch, $additionalContext);
         $client = \Gemini::client($apiKey);
-        
-        // Usiamo il metodo generico `generativeModel` con un modello recente
-        $response = $client->generativeModel('gemini-1.5-flash')->generateContent($prompt);
-
+        $response = $client->geminiPro()->generateContent($prompt);
         return ['content' => $response->text(), 'sources' => []];
     } catch (Exception $e) {
-        error_log("Errore API Gemini: " . $e->getMessage());
         return ['content' => "## Errore Gemini\n\nImpossibile generare il manuale: " . $e->getMessage(), 'sources' => []];
     }
 }
 
-function callOpenAI(string $apiKey, string $topic, string $language): array {
+function callOpenAI(string $apiKey, string $model, string $topic, string $language): array {
     try {
-        // CORREZIONE: Usiamo il Fully Qualified Class Name
         $client = \OpenAI::client($apiKey);
-        $prompt = "Write a brief medical manual on the topic: '{$topic}'. The manual should be structured with clear headings. The output language must be {$language}.";
-        
+        $prompt = "Write a brief medical manual on the topic: '{$topic}'.";
         $response = $client->chat()->create([
-            'model' => 'gpt-4o',
+            'model' => $model,
             'messages' => [['role' => 'user', 'content' => $prompt]],
         ]);
-
         return ['content' => $response->choices[0]->message->content, 'sources' => []];
     } catch (Exception $e) {
-        error_log("Errore API OpenAI: " . $e->getMessage());
         return ['content' => "## Errore OpenAI\n\nImpossibile generare il manuale: " . $e->getMessage(), 'sources' => []];
     }
 }
 
-function callClaude(string $apiKey, string $topic, string $language): array {
+function callClaude(string $apiKey, string $model, string $topic, string $language): array {
     try {
-        // CORREZIONE: Usiamo il Fully Qualified Class Name
         $client = \Anthropic::client($apiKey);
-        $prompt = "Write a brief medical manual on the topic: '{$topic}'. The manual should be structured with clear headings. The output language must be {$language}.";
-
+        $prompt = "Write a brief medical manual on the topic: '{$topic}'.";
         $response = $client->messages()->create([
-            'model' => 'claude-3-sonnet-20240229',
+            'model' => $model,
             'max_tokens' => 2048,
             'messages' => [['role' => 'user', 'content' => $prompt]],
         ]);
-        
         return ['content' => $response->content[0]->text, 'sources' => []];
     } catch (Exception $e) {
-        error_log("Errore API Claude: " . $e->getMessage());
         return ['content' => "## Errore Claude\n\nImpossibile generare il manuale: " . $e->getMessage(), 'sources' => []];
     }
 }
 
-
-// --- Logica Principale di Orchestrazione (Invariata) ---
+// Logica di Orchestrazione
 $drafts = [];
 $geminiKey = null;
+$geminiModel = null;
 
 foreach ($activeKeys as $apiKey) {
     switch ($apiKey->provider) {
         case 'Google Gemini':
             $geminiKey = $apiKey->key;
-            $result = callGemini($apiKey->key, $topic, $language, $detailLevel);
+            $geminiModel = $apiKey->model;
+            $result = callGemini($apiKey->key, $apiKey->model, $topic, $language, $detailLevel, $isDeepSearch);
             $drafts[] = $result['content'];
             break;
         case 'Anthropic Claude':
-            $result = callClaude($apiKey->key, $topic, $language);
+            $result = callClaude($apiKey->key, $apiKey->model, $topic, $language);
             $drafts[] = $result['content'];
             break;
         case 'OpenAI ChatGPT':
-            $result = callOpenAI($apiKey->key, $topic, $language);
+            $result = callOpenAI($apiKey->key, $apiKey->model, $topic, $language);
             $drafts[] = $result['content'];
             break;
     }
@@ -197,9 +145,8 @@ $finalSources = [];
 
 if (count($drafts) > 1 && $geminiKey) {
     $combinedDrafts = implode("\n\n---\n\n", $drafts);
-    $synthesisResult = callGemini($geminiKey, $topic, $language, $detailLevel, $combinedDrafts);
+    $synthesisResult = callGemini($geminiKey, $geminiModel, $topic, $language, $detailLevel, $isDeepSearch, $combinedDrafts);
     $finalContent = $synthesisResult['content'];
-    $finalSources = $synthesisResult['sources'];
 } elseif (!empty($drafts)) {
     $finalContent = $drafts[0];
 } else {
