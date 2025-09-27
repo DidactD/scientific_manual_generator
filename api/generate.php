@@ -128,7 +128,10 @@ function callGemini(string $apiKey, string $model, string $topic, string $langua
     try {
         $prompt = getGeminiPrompt($topic, $language, $detailLevel, $isDeepSearch, $additionalContext);
         $client = \Gemini::factory()->withApiKey($apiKey)->make();
-        $response = $client->generativeModel($model)->generateContent($prompt);
+        
+        // CORREZIONE: Usiamo un modello più recente e supportato
+        $response = $client->generativeModel($model ?: 'gemini-1.5-flash')->generateContent($prompt);
+
         return ['content' => $response->text(), 'sources' => []];
     } catch (Exception $e) {
         return ['content' => "## Errore Gemini\n\nImpossibile generare il manuale: " . $e->getMessage(), 'sources' => []];
@@ -199,32 +202,22 @@ $finalContent = "";
 $finalSources = [];
 
 if ($successful_calls === 0) {
-    // Se nessun modello ha risposto, unisci i messaggi di errore.
     $finalContent = "All AI models failed to generate a response.\n\n" . implode("\n\n---\n\n", $error_messages);
 } elseif (count($drafts) > 1 && $geminiKey) {
-    // Se abbiamo più bozze, usiamo Gemini per unirle.
     $combinedDrafts = implode("\n\n---\n\n", $drafts);
     $synthesisResult = callGemini($geminiKey, $geminiModel, $topic, $language, $detailLevel, $isDeepSearch, $combinedDrafts);
     $finalContent = $synthesisResult['content'];
 } else {
-    // Altrimenti, usiamo la prima (e unica) bozza di successo.
     $finalContent = $drafts[0];
 }
 
-// Controllo finale per assicurarsi che il contenuto non sia vuoto
 if (empty(trim($finalContent))) {
     http_response_code(500);
-    // Creiamo un messaggio di errore informativo per il frontend
     $errorMessage = "An unexpected error occurred: The final content is empty after processing. Please check the model permissions and API keys.";
     if (!empty($error_messages)) {
         $errorMessage .= "\n\nCaptured errors:\n" . implode("\n", $error_messages);
     }
-    // NOTA: Il frontend si aspetta un oggetto con una chiave 'content'.
-    // Inviamo l'errore dentro a questa struttura per coerenza.
-    echo json_encode([
-        'content' => $errorMessage,
-        'sources' => []
-    ]);
+    echo json_encode(['message' => $errorMessage]);
     ob_end_flush();
     exit();
 }
