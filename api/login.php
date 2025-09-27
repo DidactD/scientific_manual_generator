@@ -1,25 +1,24 @@
 <?php
-// Mettiamo questo all'inizio per assicurarci che nessun output venga inviato prematuramente
 ob_start();
 
-// Header per gestire il CORS - Assicuriamoci che siano la prima cosa in assoluto
+// Includiamo la libreria installata da Composer
+require_once 'vendor/autoload.php';
+require_once 'config.php';
+
+// Usiamo la classe JWT
+use \Firebase\JWT\JWT;
+
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-// Gestione della richiesta pre-flight OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    // Puliamo il buffer e terminiamo lo script
     ob_end_flush();
     exit();
 }
 
-// Includiamo la configurazione DOPO aver gestito la richiesta OPTIONS
-require_once 'config.php';
-
-// Testiamo subito la connessione al DB per trovare eventuali errori
 $conn = getDbConnection();
 if ($conn->connect_error) {
     http_response_code(500);
@@ -45,9 +44,25 @@ $result = $stmt->get_result();
 if ($result->num_rows === 1) {
     $user = $result->fetch_assoc();
     if (password_verify($data->password, $user['password'])) {
+        // --- SEZIONE JWT (JSON Web Token) ---
+        // Ora generiamo un VERO token
+        $payload = [
+            'iss' => "your-app-name", // Chi ha emesso il token
+            'iat' => time(), // Quando è stato emesso
+            'exp' => time() + (60 * 60 * 24), // Scadenza (es. 24 ore)
+            'user' => [
+                'id' => $user['id'],
+                'name' => $user['name'],
+                'email' => $user['email']
+            ]
+        ];
+
+        // Codifichiamo il token usando la chiave segreta definita in config.php
+        $jwt = JWT::encode($payload, JWT_SECRET, 'HS256');
+
         http_response_code(200);
         echo json_encode([
-            'token' => 'un_token_fittizio_per_il_test',
+            'token' => $jwt,
             'user' => [
                 'id' => $user['id'],
                 'name' => $user['name'],
@@ -65,7 +80,5 @@ if ($result->num_rows === 1) {
 
 $stmt->close();
 $conn->close();
-
-// Inviamo l'output finale
 ob_end_flush();
 ?>

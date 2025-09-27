@@ -1,6 +1,8 @@
 <?php
-require_once 'config.php';
+ob_start();
+
 require_once 'vendor/autoload.php';
+require_once 'config.php';
 
 use \Firebase\JWT\JWT;
 use \Firebase\JWT\Key;
@@ -10,23 +12,35 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-// Gestione della richiesta pre-flight OPTIONS
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
+    http_response_code(200);
+    ob_end_flush();
+    exit();
 }
 
-// Funzione per decodificare il token e ottenere l'ID utente
+// In api/manuals.php
+
+// SOSTITUISCI LA VECCHIA FUNZIONE getUserIdFromToken CON QUESTA
 function getUserIdFromToken() {
     $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? null;
-    if (!$authHeader) return null;
+    if (!$authHeader) {
+        // Registra l'errore nel file di log di PHP
+        error_log("Errore JWT: Intestazione Authorization mancante.");
+        return null;
+    }
 
     list($jwt) = sscanf($authHeader, 'Bearer %s');
-    if (!$jwt) return null;
+    if (!$jwt) {
+        error_log("Errore JWT: Token non trovato nell'intestazione Bearer.");
+        return null;
+    }
 
     try {
         $decoded = JWT::decode($jwt, new Key(JWT_SECRET, 'HS256'));
         return $decoded->user->id;
     } catch (Exception $e) {
+        // Registra il messaggio esatto dell'eccezione nel file di log di PHP
+        error_log("Errore Decodifica JWT: " . $e->getMessage());
         return null;
     }
 }
@@ -34,27 +48,27 @@ function getUserIdFromToken() {
 $userId = getUserIdFromToken();
 if (!$userId) {
     http_response_code(401);
-    echo json_encode(['message' => 'Accesso non autorizzato.']);
+    echo json_encode(['message' => 'Accesso non autorizzato. Token non valido o mancante.']);
+    ob_end_flush();
     exit();
 }
 
 $conn = getDbConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Il resto dello script (switch case per GET, POST, etc.) rimane identico
 switch ($method) {
     case 'GET':
-        // Ottieni tutti i manuali salvati dall'utente
         $stmt = $conn->prepare("SELECT id, topic, language, detail_level, saved_at FROM manuals WHERE user_id = ? ORDER BY saved_at DESC");
         $stmt->bind_param("i", $userId);
         $stmt->execute();
         $result = $stmt->get_result();
         $manuals = [];
         while ($row = $result->fetch_assoc()) {
-            // Leggi il contenuto del file per ogni manuale
             $filePath = MANUALS_DIR . '/' . $row['id'] . '.md';
             if (file_exists($filePath)) {
                 $row['content'] = file_get_contents($filePath);
-                $row['sources'] = []; // Simula una lista vuota di fonti
+                $row['sources'] = [];
                 $manuals[] = $row;
             }
         }
@@ -62,7 +76,6 @@ switch ($method) {
         break;
 
     case 'POST':
-        // Salva un nuovo manuale
         $data = json_decode(file_get_contents("php://input"));
         $filePath = MANUALS_DIR . '/' . $data->id . '.md';
         file_put_contents($filePath, $data->content);
@@ -80,21 +93,17 @@ switch ($method) {
         break;
 
     case 'PUT':
-        // Aggiorna un manuale esistente
         $id = $_GET['id'] ?? null;
         if (!$id) {
             http_response_code(400);
             echo json_encode(['message' => 'ID del manuale mancante.']);
             exit();
         }
-
         $data = json_decode(file_get_contents("php://input"));
         $filePath = MANUALS_DIR . '/' . $id . '.md';
         file_put_contents($filePath, $data->content);
-
         $stmt = $conn->prepare("UPDATE manuals SET topic = ?, language = ?, detail_level = ?, saved_at = ? WHERE id = ? AND user_id = ?");
         $stmt->bind_param("sssssi", $data->topic, $data->language, $data->detailLevel, $data->savedAt, $id, $userId);
-
         if ($stmt->execute()) {
             echo json_encode($data);
         } else {
@@ -104,25 +113,20 @@ switch ($method) {
         break;
 
     case 'DELETE':
-        // Elimina un manuale
         $id = $_GET['id'] ?? null;
         if (!$id) {
             http_response_code(400);
             echo json_encode(['message' => 'ID del manuale mancante.']);
             exit();
         }
-        
-        // Prima elimina il file
         $filePath = MANUALS_DIR . '/' . $id . '.md';
         if (file_exists($filePath)) {
             unlink($filePath);
         }
-
         $stmt = $conn->prepare("DELETE FROM manuals WHERE id = ? AND user_id = ?");
         $stmt->bind_param("si", $id, $userId);
-
         if ($stmt->execute()) {
-            http_response_code(204); // No Content
+            http_response_code(204);
         } else {
             http_response_code(500);
             echo json_encode(['message' => 'Errore nell\'eliminazione del manuale.']);
@@ -136,3 +140,5 @@ switch ($method) {
 }
 
 $conn->close();
+ob_end_flush();
+?>
