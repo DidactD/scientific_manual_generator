@@ -11,7 +11,7 @@ import LoginPage from './pages/LoginPage';
 import { generateManual } from './services/generationService';
 import { getAuthToken, logout } from './services/authService';
 import { getSavedManuals, saveManual as apiSaveManual, updateManual as apiUpdateManual, deleteManual as apiDeleteManual } from './services/manualsService';
-import type { ManualData, SavedManual, DetailLevel, ApiKey, User } from './types';
+import type { ManualData, SavedManual, DetailLevel, ApiKey, User, ModelProvider } from './types';
 import useLocalStorage from './hooks/useLocalStorage';
 import useDebounce from './hooks/useDebounce';
 
@@ -24,6 +24,17 @@ const decodeToken = (token: string): User | null => {
         return null;
     }
 }
+
+// Helper for default models
+const getDefaultModel = (provider: ModelProvider): string => {
+    const defaultModels: Record<ModelProvider, string> = {
+        'Google Gemini': 'gemini-pro',
+        'OpenAI ChatGPT': 'gpt-4o',
+        'Anthropic Claude': 'claude-3-sonnet-20240229',
+    };
+    return defaultModels[provider];
+};
+
 
 const App: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -50,6 +61,20 @@ const App: React.FC = () => {
     const [savedManuals, setSavedManuals] = useState<SavedManual[]>([]);
     const [searchHistory, setSearchHistory] = useLocalStorage<string[]>('searchHistory', []);
     const [apiKeys, setApiKeys] = useLocalStorage<ApiKey[]>('apiKeys', []);
+    
+    // --- CORREZIONE QUI ---
+    // Questo useEffect assicura che tutte le chiavi API abbiano un modello definito.
+    useEffect(() => {
+        const needsMigration = apiKeys.some(key => !key.model);
+        if (needsMigration) {
+            setApiKeys(prevKeys => 
+                prevKeys.map(key => 
+                    key.model ? key : { ...key, model: getDefaultModel(key.provider) }
+                )
+            );
+        }
+    }, [apiKeys, setApiKeys]);
+
 
     useEffect(() => {
         const token = getAuthToken();
@@ -124,7 +149,6 @@ const App: React.FC = () => {
         setActiveManual(null);
 
         try {
-            // Passiamo isDeepSearch come true direttamente
             const data = await generateManual(activeApiKeys, topic, language, detailLevel, true);
             setCurrentGeneratedData(data);
         } catch (err) {
@@ -190,7 +214,6 @@ const App: React.FC = () => {
         setCurrentGeneratedData(null);
 
         try {
-            // Passiamo isDeepSearch come true direttamente
             const newData = await generateManual(activeApiKeys, manualToUpdate.topic, manualToUpdate.language, manualToUpdate.detailLevel, true);
             const updatedManual: SavedManual = {
                 ...manualToUpdate,
