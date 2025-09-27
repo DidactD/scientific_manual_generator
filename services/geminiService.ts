@@ -53,10 +53,17 @@ Handling evidence gaps: If information is insufficient, state it explicitly.
 Operational flow:
 1.  Perform the necessary web searches.
 2.  Draft the text following the indicated structure.
-3.  At the end of the text, insert a dedicated section called "Bibliography" that lists the scientific sources consulted and cited in the text.
-4.  Citations in the text must use a numerical format (e.g., [1], [2]) and the bibliography must correspond. Example: "Conservative treatment is indicated [3]." and in the bibliography "3. Vaccaro AR, et al. ...".
-
-The "Bibliography" section must be unique and at the end of the document.
+3.  **Citations and Bibliography (Vancouver Style)**:
+    -   In-text citations must be numerical, enclosed in square brackets (e.g., [1], [2], [3]).
+    -   A "Bibliography" section must be the final section of the document.
+    -   List all cited sources numerically in the order they first appear in the text.
+    -   Format each entry strictly according to the Vancouver style. Examples:
+        -   **Journal Article**: Author(s). Title of article. Abbreviated Title of Journal. Year;volume(issue):pages.
+            *Example*: 1. Halpern SD, Ubel PA, Caplan AL. Solid-organ transplantation in HIV-infected patients. N Engl J Med. 2002;347(4):284-7.
+        -   **Book**: Author(s). Title of book. Edition. Place of publication: Publisher; Year.
+            *Example*: 2. Murray PR, Rosenthal KS, Pfaller MA. Medical microbiology. 4th ed. St. Louis: Mosby; 2002.
+        -   **Website**: Author(s) (if available). Title of the specific page [Internet]. Place of publication (if available): Publisher; Date of publication [cited YYYY Mon DD]. Available from: URL.
+            *Example*: 3. World Health Organization. Global status report on noncommunicable diseases 2014 [Internet]. Geneva: WHO; 2014 [cited 2024 Oct 26]. Available from: http://www.who.int/nmh/publications/ncd-status-report-2014/en/
 `;
     
     if (additionalContext) {
@@ -158,9 +165,11 @@ export async function generateManual(topic: string, language: string, detailLeve
   } catch (error) {
     console.error("Error generating manual:", error);
     if (error instanceof Error) {
-        // More specific error for API key issues
         if (error.message.includes('API key not valid')) {
             throw new Error('The provided Google Gemini API key is invalid. Please check it in the Models settings.');
+        }
+        if (error.message.includes('Rpc failed') || error.message.includes('xhr error')) {
+            throw new Error('A network error occurred while communicating with the Gemini API. This could be due to a temporary issue, a browser extension blocking the request, or a network firewall. Please check your connection and try again.');
         }
         throw new Error(`An error occurred while communicating with the API: ${error.message}`);
     }

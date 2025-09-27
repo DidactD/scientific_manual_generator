@@ -9,36 +9,6 @@ interface ModelsPageProps {
     onClose: () => void;
 }
 
-const KeyIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-    </svg>
-);
-
-const BackIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-    </svg>
-);
-
-const Toggle: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void }> = ({ enabled, onChange }) => {
-    return (
-        <button
-            type="button"
-            onClick={() => onChange(!enabled)}
-            className={`${enabled ? 'bg-blue-600' : 'bg-slate-300'
-                } relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-            role="switch"
-            aria-checked={enabled}
-        >
-            <span
-                className={`${enabled ? 'translate-x-6' : 'translate-x-1'
-                    } inline-block w-4 h-4 transform bg-white rounded-full transition-transform`}
-            />
-        </button>
-    );
-};
-
 const ModelsPage: React.FC<ModelsPageProps> = ({ apiKeys, setApiKeys, onClose }) => {
     const [newProvider, setNewProvider] = useState<ModelProvider>('Google Gemini');
     const [newKey, setNewKey] = useState('');
@@ -81,90 +51,94 @@ const ModelsPage: React.FC<ModelsPageProps> = ({ apiKeys, setApiKeys, onClose })
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 animate-fade-in">
-            <header className="mb-8">
-                <button onClick={onClose} className="flex items-center gap-2 text-sm text-blue-600 font-semibold hover:underline mb-4">
-                    <BackIcon />
+        <div className="container py-4">
+            <header className="mb-4">
+                <button onClick={onClose} className="btn btn-link text-decoration-none ps-0 mb-3">
+                    <i className="bi bi-arrow-left me-2"></i>
                     Back to Generator
                 </button>
-                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Manage AI Models</h1>
-                <p className="mt-1 text-md text-slate-500">
+                <h1 className="h2 fw-bold">Manage AI Models</h1>
+                <p className="text-muted">
                     Add and configure API keys for different models to power the generator.
                 </p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1">
-                    <form onSubmit={handleAddKey} className="bg-white p-6 rounded-lg shadow-md space-y-4">
-                        <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                            <KeyIcon />
+            <div className="row g-4">
+                <div className="col-lg-4">
+                    <div className="card shadow-sm">
+                      <div className="card-body p-4">
+                        <h2 className="h5 card-title d-flex align-items-center gap-2 mb-3">
+                            <i className="bi bi-key-fill"></i>
                             Add New API Key
                         </h2>
-                        {error && <p className="text-sm text-red-600">{error}</p>}
-                        <div>
-                            <label htmlFor="model-provider" className="block text-sm font-medium text-slate-700 mb-1">Model Provider</label>
-                            <select
-                                id="model-provider"
-                                value={newProvider}
-                                onChange={(e) => setNewProvider(e.target.value as ModelProvider)}
-                                className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
+                        <form onSubmit={handleAddKey} className="space-y-4">
+                            {error && <p className="text-danger small">{error}</p>}
+                            <div className="mb-3">
+                                <label htmlFor="model-provider" className="form-label">Model Provider</label>
+                                <select
+                                    id="model-provider"
+                                    value={newProvider}
+                                    onChange={(e) => setNewProvider(e.target.value as ModelProvider)}
+                                    className="form-select"
+                                >
+                                    {MODEL_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                            </div>
+                            <div className="mb-3">
+                                <label htmlFor="api-key" className="form-label">API Key</label>
+                                <input
+                                    id="api-key"
+                                    type="password"
+                                    value={newKey}
+                                    onChange={(e) => setNewKey(e.target.value)}
+                                    placeholder="Paste your API key here"
+                                    className="form-control"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn btn-primary w-100"
                             >
-                                {MODEL_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="api-key" className="block text-sm font-medium text-slate-700 mb-1">API Key</label>
-                            <input
-                                id="api-key"
-                                type="password"
-                                value={newKey}
-                                onChange={(e) => setNewKey(e.target.value)}
-                                placeholder="Paste your API key here"
-                                className="w-full px-3 py-2 bg-white text-slate-900 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition"
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition duration-200 ease-in-out"
-                        >
-                            Save Key
-                        </button>
-                    </form>
+                                Save Key
+                            </button>
+                        </form>
+                      </div>
+                    </div>
                 </div>
 
-                <div className="lg:col-span-2">
-                    <div className="bg-white p-6 rounded-lg shadow-md">
-                        <h2 className="text-lg font-semibold text-slate-800 mb-4">Saved Keys</h2>
-                        <div className="space-y-3">
+                <div className="col-lg-8">
+                    <div className="card shadow-sm">
+                       <div className="card-body p-4">
+                        <h2 className="h5 card-title mb-3">Saved Keys</h2>
+                        <div className="vstack gap-3">
                             {apiKeys.length > 0 ? (
                                 apiKeys.map(apiKey => (
-                                    <div key={apiKey.id} className="p-4 border border-slate-200 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                        <div className="flex-grow">
-                                            <p className="font-semibold text-slate-700">{apiKey.provider}</p>
-                                            <p className="text-sm text-slate-500 font-mono">{maskKey(apiKey.key)}</p>
+                                    <div key={apiKey.id} className="p-3 border rounded-3 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+                                        <div className="flex-grow-1">
+                                            <p className="fw-semibold mb-0">{apiKey.provider}</p>
+                                            <p className="small text-muted font-monospace mb-0">{maskKey(apiKey.key)}</p>
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-2">
-                                                <label htmlFor={`toggle-${apiKey.id}`} className="text-sm font-medium text-slate-600">Active:</label>
-                                                <Toggle enabled={apiKey.isActive} onChange={() => handleToggleActive(apiKey.id)} />
+                                        <div className="d-flex align-items-center gap-4">
+                                            <div className="form-check form-switch d-flex align-items-center gap-2">
+                                                <input className="form-check-input" type="checkbox" role="switch" id={`toggle-${apiKey.id}`} checked={apiKey.isActive} onChange={() => handleToggleActive(apiKey.id)} />
+                                                <label className="form-check-label" htmlFor={`toggle-${apiKey.id}`}>Active</label>
                                             </div>
-                                            <button onClick={() => handleDeleteKey(apiKey.id)} className="text-sm p-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors" aria-label="Delete API Key">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
+                                            <button onClick={() => handleDeleteKey(apiKey.id)} className="btn btn-sm btn-outline-danger" aria-label="Delete API Key">
+                                                <i className="bi bi-trash-fill"></i>
                                             </button>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-lg">
-                                    <p className="text-slate-500">No API keys saved yet. Add one to get started.</p>
+                                <div className="text-center p-4 border border-dashed rounded-3">
+                                    <p className="text-muted mb-0">No API keys saved yet. Add one to get started.</p>
                                 </div>
                             )}
                         </div>
-                        <div className="mt-6 p-4 bg-slate-50 border-l-4 border-slate-300 text-slate-600 rounded-r-lg text-sm">
-                            <p><strong className="font-semibold">Note:</strong> You can activate multiple models simultaneously. The generator will use all active models to synthesize a more comprehensive report. For best results, include Google Gemini for its web search and synthesis capabilities.</p>
+                        <div className="alert alert-secondary mt-4 mb-0 small">
+                            <strong className="fw-semibold">Note:</strong> You can activate multiple models simultaneously. The generator will use all active models to synthesize a more comprehensive report. For best results, include Google Gemini for its web search and synthesis capabilities.
                         </div>
+                       </div>
                     </div>
                 </div>
             </div>

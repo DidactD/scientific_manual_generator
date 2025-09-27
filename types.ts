@@ -28,3 +28,9 @@ export interface ApiKey {
     key: string;
     isActive: boolean;
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+}
